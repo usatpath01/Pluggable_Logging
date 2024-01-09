@@ -53,6 +53,12 @@ typedef __u64 u64;
 #define UNLINKAT_FLAG 16
 #define OPEN_FLAG 17
 #define CLOSE_FLAG 18
+#define SOCKET_FLAG 19
+#define SEND_FLAG 20
+#define RECV_FLAG 21
+
+
+
 
 typedef struct task_context {
     u32 host_pid;               /* PID in host pid namespace */
@@ -156,7 +162,46 @@ struct connect_data_t {
     void *uservaddr;                            /* Server address info */
     int addrlen;                                /* Server address length */
     // Data
+    unsigned long s_addr;
+    unsigned short sin_port;
+    long retval;                                /* Return value */
+};
 
+struct socket_data_t {
+    // Metadata
+    event_context_t event;                      /* Event context */
+    // Args 
+    int domain; 
+    int type; 
+    int protocol;
+    // Data
+    long retval;                                /* Return value */
+
+};
+
+struct send_data_t {
+    // Metadata
+    event_context_t event;                      /* Event context */
+    // Args 
+    int sockfd; 
+    void* buff; 
+    size_t len;
+    unsigned int flags; 
+    // Data
+    long retval;                                /* Return value */
+};
+
+
+
+struct recv_data_t {
+    // Metadata
+    event_context_t event;                      /* Event context */
+    // Args 
+    int sockfd;
+    void* buff; 
+    size_t len;
+    unsigned int flags; 
+    // Data
     long retval;                                /* Return value */
 };
 
@@ -168,7 +213,8 @@ struct accept_data_t {
     void *upeer_sockaddr;                       /* Peer address info */
     int *upeer_addrlen;                         /* Peer address length */
     // Data
-
+    unsigned long s_addr;
+    unsigned short sin_port;
     long retval;                                /* Return value */
 };
 
@@ -270,7 +316,8 @@ struct accept4_data_t {
     int *upeer_addrlen;                         /* Peer address length (To be populated) */
     int flags;                                  /* Flags */      
     // Data
-    
+    unsigned long s_addr;
+    unsigned short sin_port;
     long retval;                                /* Return value */
 };
 

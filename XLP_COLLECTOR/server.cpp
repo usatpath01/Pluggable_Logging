@@ -96,7 +96,7 @@ int main() {
                     
                     if(buffer[i]=='\n')
                     {
-                        std::cout << curr_log << std::endl;
+                        std::cout << "Host "<<cl<<" : "<< curr_log << std::endl;
                         curr_log = "";
                     }
                     else 

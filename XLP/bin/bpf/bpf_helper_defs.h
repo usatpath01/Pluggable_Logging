@@ -29,6 +29,7 @@ struct tcp_request_sock;
 struct udp6_sock;
 struct unix_sock;
 struct task_struct;
+struct cgroup;
 struct __sk_buff;
 struct sk_msg_md;
 struct xdp_md;
@@ -42,7 +43,6 @@ struct mptcp_sock;
 struct bpf_dynptr;
 struct iphdr;
 struct ipv6hdr;
-struct cgroup;
 
 /*
  * bpf_map_lookup_elem
@@ -118,17 +118,17 @@ static __u64 (*bpf_ktime_get_ns)(void) = (void *) 5;
  *
  * 	This helper is a "printk()-like" facility for debugging. It
  * 	prints a message defined by format *fmt* (of size *fmt_size*)
- * 	to file *\/sys/kernel/debug/tracing/trace* from DebugFS, if
+ * 	to file *\/sys/kernel/tracing/trace* from TraceFS, if
  * 	available. It can take up to three additional **u64**
  * 	arguments (as an eBPF helpers, the total number of arguments is
  * 	limited to five).
  *
  * 	Each time the helper is called, it appends a line to the trace.
- * 	Lines are discarded while *\/sys/kernel/debug/tracing/trace* is
- * 	open, use *\/sys/kernel/debug/tracing/trace_pipe* to avoid this.
+ * 	Lines are discarded while *\/sys/kernel/tracing/trace* is
+ * 	open, use *\/sys/kernel/tracing/trace_pipe* to avoid this.
  * 	The format of the trace is customizable, and the exact output
  * 	one will get depends on the options set in
- * 	*\/sys/kernel/debug/tracing/trace_options* (see also the
+ * 	*\/sys/kernel/tracing/trace_options* (see also the
  * 	*README* file under the same directory). However, it usually
  * 	defaults to something like:
  *
@@ -350,7 +350,9 @@ static long (*bpf_tail_call)(void *ctx, void *prog_array_map, __u32 index) = (vo
  * 	direct packet access.
  *
  * Returns
- * 	0 on success, or a negative error in case of failure.
+ * 	0 on success, or a negative error in case of failure. Positive
+ * 	error indicates a potential drop or congestion in the target
+ * 	device. The particular positive error codes are not defined.
  */
 static long (*bpf_clone_redirect)(struct __sk_buff *skb, __u32 ifindex, __u64 flags) = (void *) 13;
 
@@ -537,6 +539,9 @@ static long (*bpf_skb_get_tunnel_key)(struct __sk_buff *skb, struct bpf_tunnel_k
  * 		sending the packet. This flag was added for GRE
  * 		encapsulation, but might be used with other protocols
  * 		as well in the future.
+ * 	**BPF_F_NO_TUNNEL_KEY**
+ * 		Add a flag to tunnel metadata indicating that no tunnel
+ * 		key should be set in the resulting tunnel header.
  *
  * 	Here is a typical usage on the transmit path:
  *
@@ -1201,8 +1206,8 @@ static long (*bpf_set_hash)(struct __sk_buff *skb, __u32 hash) = (void *) 48;
  * 	*bpf_socket* should be one of the following:
  *
  * 	* **struct bpf_sock_ops** for **BPF_PROG_TYPE_SOCK_OPS**.
- * 	* **struct bpf_sock_addr** for **BPF_CGROUP_INET4_CONNECT**
- * 	  and **BPF_CGROUP_INET6_CONNECT**.
+ * 	* **struct bpf_sock_addr** for **BPF_CGROUP_INET4_CONNECT**,
+ * 	  **BPF_CGROUP_INET6_CONNECT** and **BPF_CGROUP_UNIX_CONNECT**.
  *
  * 	This helper actually implements a subset of **setsockopt()**.
  * 	It supports the following *level*\ s:
@@ -1210,14 +1215,19 @@ static long (*bpf_set_hash)(struct __sk_buff *skb, __u32 hash) = (void *) 48;
  * 	* **SOL_SOCKET**, which supports the following *optname*\ s:
  * 	  **SO_RCVBUF**, **SO_SNDBUF**, **SO_MAX_PACING_RATE**,
  * 	  **SO_PRIORITY**, **SO_RCVLOWAT**, **SO_MARK**,
- * 	  **SO_BINDTODEVICE**, **SO_KEEPALIVE**.
+ * 	  **SO_BINDTODEVICE**, **SO_KEEPALIVE**, **SO_REUSEADDR**,
+ * 	  **SO_REUSEPORT**, **SO_BINDTOIFINDEX**, **SO_TXREHASH**.
  * 	* **IPPROTO_TCP**, which supports the following *optname*\ s:
  * 	  **TCP_CONGESTION**, **TCP_BPF_IW**,
  * 	  **TCP_BPF_SNDCWND_CLAMP**, **TCP_SAVE_SYN**,
  * 	  **TCP_KEEPIDLE**, **TCP_KEEPINTVL**, **TCP_KEEPCNT**,
- * 	  **TCP_SYNCNT**, **TCP_USER_TIMEOUT**, **TCP_NOTSENT_LOWAT**.
+ * 	  **TCP_SYNCNT**, **TCP_USER_TIMEOUT**, **TCP_NOTSENT_LOWAT**,
+ * 	  **TCP_NODELAY**, **TCP_MAXSEG**, **TCP_WINDOW_CLAMP**,
+ * 	  **TCP_THIN_LINEAR_TIMEOUTS**, **TCP_BPF_DELACK_MAX**,
+ * 	  **TCP_BPF_RTO_MIN**.
  * 	* **IPPROTO_IP**, which supports *optname* **IP_TOS**.
- * 	* **IPPROTO_IPV6**, which supports *optname* **IPV6_TCLASS**.
+ * 	* **IPPROTO_IPV6**, which supports the following *optname*\ s:
+ * 	  **IPV6_TCLASS**, **IPV6_AUTOFLOWLABEL**.
  *
  * Returns
  * 	0 on success, or a negative error in case of failure.
@@ -1269,6 +1279,11 @@ static long (*bpf_setsockopt)(void *bpf_socket, int level, int optname, void *op
  * 	  Use with BPF_F_ADJ_ROOM_ENCAP_L2 flag to further specify the
  * 	  L2 type as Ethernet.
  *
+ * 	* **BPF_F_ADJ_ROOM_DECAP_L3_IPV4**,
+ * 	  **BPF_F_ADJ_ROOM_DECAP_L3_IPV6**:
+ * 	  Indicate the new IP header version after decapsulating the outer
+ * 	  IP header. Used when the inner and outer IP versions are different.
+ *
  * 	A call to this helper is susceptible to change the underlying
  * 	packet buffer. Therefore, at load time, all checks on pointers
  * 	previously done by the verifier are invalidated and must be
@@ -1307,7 +1322,7 @@ static long (*bpf_skb_adjust_room)(struct __sk_buff *skb, __s32 len_diff, __u32 
  * 	**XDP_REDIRECT** on success, or the value of the two lower bits
  * 	of the *flags* argument on error.
  */
-static long (*bpf_redirect_map)(void *map, __u32 key, __u64 flags) = (void *) 51;
+static long (*bpf_redirect_map)(void *map, __u64 key, __u64 flags) = (void *) 51;
 
 /*
  * bpf_sk_redirect_map
@@ -1437,7 +1452,7 @@ static long (*bpf_perf_event_read_value)(void *map, __u64 flags, struct bpf_perf
 /*
  * bpf_perf_prog_read_value
  *
- * 	For en eBPF program attached to a perf event, retrieve the
+ * 	For an eBPF program attached to a perf event, retrieve the
  * 	value of the event counter associated to *ctx* and store it in
  * 	the structure pointed by *buf* and of size *buf_size*. Enabled
  * 	and running times are also stored in the structure (see
@@ -1462,16 +1477,14 @@ static long (*bpf_perf_prog_read_value)(struct bpf_perf_event_data *ctx, struct 
  * 	*bpf_socket* should be one of the following:
  *
  * 	* **struct bpf_sock_ops** for **BPF_PROG_TYPE_SOCK_OPS**.
- * 	* **struct bpf_sock_addr** for **BPF_CGROUP_INET4_CONNECT**
- * 	  and **BPF_CGROUP_INET6_CONNECT**.
+ * 	* **struct bpf_sock_addr** for **BPF_CGROUP_INET4_CONNECT**,
+ * 	  **BPF_CGROUP_INET6_CONNECT** and **BPF_CGROUP_UNIX_CONNECT**.
  *
  * 	This helper actually implements a subset of **getsockopt()**.
- * 	It supports the following *level*\ s:
- *
- * 	* **IPPROTO_TCP**, which supports *optname*
- * 	  **TCP_CONGESTION**.
- * 	* **IPPROTO_IP**, which supports *optname* **IP_TOS**.
- * 	* **IPPROTO_IPV6**, which supports *optname* **IPV6_TCLASS**.
+ * 	It supports the same set of *optname*\ s that is supported by
+ * 	the **bpf_setsockopt**\ () helper.  The exceptions are
+ * 	**TCP_BPF_*** is **bpf_setsockopt**\ () only and
+ * 	**TCP_SAVED_SYN** is **bpf_getsockopt**\ () only.
  *
  * Returns
  * 	0 on success, or a negative error in case of failure.
@@ -1821,9 +1834,23 @@ static long (*bpf_skb_load_bytes_relative)(const void *skb, __u32 offset, void *
  * 	**BPF_FIB_LOOKUP_DIRECT**
  * 		Do a direct table lookup vs full lookup using FIB
  * 		rules.
+ * 	**BPF_FIB_LOOKUP_TBID**
+ * 		Used with BPF_FIB_LOOKUP_DIRECT.
+ * 		Use the routing table ID present in *params*->tbid
+ * 		for the fib lookup.
  * 	**BPF_FIB_LOOKUP_OUTPUT**
  * 		Perform lookup from an egress perspective (default is
  * 		ingress).
+ * 	**BPF_FIB_LOOKUP_SKIP_NEIGH**
+ * 		Skip the neighbour table lookup. *params*->dmac
+ * 		and *params*->smac will not be set as output. A common
+ * 		use case is to call **bpf_redirect_neigh**\ () after
+ * 		doing **bpf_fib_lookup**\ ().
+ * 	**BPF_FIB_LOOKUP_SRC**
+ * 		Derive and set source IP addr in *params*->ipv{4,6}_src
+ * 		for the nexthop. If the src addr cannot be derived,
+ * 		**BPF_FIB_LKUP_RET_NO_SRC_ADDR** is returned. In this
+ * 		case, *params*->dmac and *params*->smac are not set either.
  *
  * 	*ctx* is either **struct xdp_md** for XDP programs or
  * 	**struct sk_buff** tc cls_act programs.
@@ -3013,9 +3040,6 @@ static __u64 (*bpf_get_current_ancestor_cgroup_id)(int ancestor_level) = (void *
  *
  * 	**-EOPNOTSUPP** if the operation is not supported, for example
  * 	a call from outside of TC ingress.
- *
- * 	**-ESOCKTNOSUPPORT** if the socket type is not supported
- * 	(reuseport).
  */
 static long (*bpf_sk_assign)(void *ctx, void *sk, __u64 flags) = (void *) 124;
 
@@ -4012,6 +4036,14 @@ static long (*bpf_timer_set_callback)(struct bpf_timer *timer, void *callback_fn
  * 	different maps if key/value layout matches across maps.
  * 	Every bpf_timer_set_callback() can have different callback_fn.
  *
+ * 	*flags* can be one of:
+ *
+ * 	**BPF_F_TIMER_ABS**
+ * 		Start the timer in absolute expire value instead of the
+ * 		default relative one.
+ * 	**BPF_F_TIMER_CPU_PIN**
+ * 		Timer will be pinned to the CPU of the caller.
+ *
  *
  * Returns
  * 	0 on success.
@@ -4039,9 +4071,14 @@ static long (*bpf_timer_cancel)(struct bpf_timer *timer) = (void *) 172;
  *
  * 	Get address of the traced function (for tracing and kprobe programs).
  *
+ * 	When called for kprobe program attached as uprobe it returns
+ * 	probe address for both entry and return uprobe.
+ *
+ *
  * Returns
- * 	Address of the traced function.
+ * 	Address of the traced function for kprobe.
  * 	0 for kprobes placed within the function (not at the entry).
+ * 	Address of the probe for uprobe and return uprobe.
  */
 static __u64 (*bpf_get_func_ip)(void *ctx) = (void *) 173;
 
@@ -4485,21 +4522,32 @@ static void (*bpf_ringbuf_discard_dynptr)(struct bpf_dynptr *ptr, __u64 flags) =
  * 	of *src*'s data, -EINVAL if *src* is an invalid dynptr or if
  * 	*flags* is not 0.
  */
-static long (*bpf_dynptr_read)(void *dst, __u32 len, struct bpf_dynptr *src, __u32 offset, __u64 flags) = (void *) 201;
+static long (*bpf_dynptr_read)(void *dst, __u32 len, const struct bpf_dynptr *src, __u32 offset, __u64 flags) = (void *) 201;
 
 /*
  * bpf_dynptr_write
  *
  * 	Write *len* bytes from *src* into *dst*, starting from *offset*
  * 	into *dst*.
- * 	*flags* is currently unused.
+ *
+ * 	*flags* must be 0 except for skb-type dynptrs.
+ *
+ * 	For skb-type dynptrs:
+ * 	    *  All data slices of the dynptr are automatically
+ * 	       invalidated after **bpf_dynptr_write**\ (). This is
+ * 	       because writing may pull the skb and change the
+ * 	       underlying packet buffer.
+ *
+ * 	    *  For *flags*, please see the flags accepted by
+ * 	       **bpf_skb_store_bytes**\ ().
  *
  * Returns
  * 	0 on success, -E2BIG if *offset* + *len* exceeds the length
  * 	of *dst*'s data, -EINVAL if *dst* is an invalid dynptr or if *dst*
- * 	is a read-only dynptr or if *flags* is not 0.
+ * 	is a read-only dynptr or if *flags* is not correct. For skb-type dynptrs,
+ * 	other errors correspond to errors returned by **bpf_skb_store_bytes**\ ().
  */
-static long (*bpf_dynptr_write)(struct bpf_dynptr *dst, __u32 offset, void *src, __u32 len, __u64 flags) = (void *) 202;
+static long (*bpf_dynptr_write)(const struct bpf_dynptr *dst, __u32 offset, void *src, __u32 len, __u64 flags) = (void *) 202;
 
 /*
  * bpf_dynptr_data
@@ -4509,12 +4557,15 @@ static long (*bpf_dynptr_write)(struct bpf_dynptr *dst, __u32 offset, void *src,
  * 	*len* must be a statically known value. The returned data slice
  * 	is invalidated whenever the dynptr is invalidated.
  *
+ * 	skb and xdp type dynptrs may not use bpf_dynptr_data. They should
+ * 	instead use bpf_dynptr_slice and bpf_dynptr_slice_rdwr.
+ *
  * Returns
  * 	Pointer to the underlying dynptr data, NULL if the dynptr is
  * 	read-only, if the dynptr is invalid, or if the offset and length
  * 	is out of bounds.
  */
-static void *(*bpf_dynptr_data)(struct bpf_dynptr *ptr, __u32 offset, __u32 len) = (void *) 203;
+static void *(*bpf_dynptr_data)(const struct bpf_dynptr *ptr, __u32 offset, __u32 len) = (void *) 203;
 
 /*
  * bpf_tcp_raw_gen_syncookie_ipv4
@@ -4627,7 +4678,7 @@ static __u64 (*bpf_ktime_get_tai_ns)(void) = (void *) 208;
  * 	Drain samples from the specified user ring buffer, and invoke
  * 	the provided callback for each such sample:
  *
- * 	long (\*callback_fn)(struct bpf_dynptr \*dynptr, void \*ctx);
+ * 	long (\*callback_fn)(const struct bpf_dynptr \*dynptr, void \*ctx);
  *
  * 	If **callback_fn** returns 0, the helper will continue to try
  * 	and drain the next sample, up to a maximum of
