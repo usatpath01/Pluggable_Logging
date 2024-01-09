@@ -431,6 +431,156 @@ int handle_dup2_exit(struct trace_event_raw_sys_exit *ctx)
     return 0;
 }
 
+
+SEC("tp/syscalls/sys_exit_socket")
+int handle_socket_exit(struct trace_event_raw_sys_exit *ctx)
+{
+    /* 
+    ctx->args[0] : int domain
+    ctx->args[1] : int type
+    ctx->args[2] : int protocol
+    */
+    FILTER_SELF
+    if(filter_container == 1) FILTER_CONTAINER
+    if(!((syscall_flags >> SOCKET_FLAG) & 1)) return 0;
+
+    void *event_data;
+    struct socket_data_t *socket_data;
+    struct task_struct *curr = (struct task_struct *)bpf_get_current_task();
+
+    /* Reserve space in event queue */
+    event_data = reserve_in_event_queue(&rb, sizeof(struct socket_data_t), 0);
+    if(!event_data)
+        return 0;
+    /* Tag the entry with the syscall_id */
+    socket_data = (struct socket_data_t *)init_event_header(event_data, SYSCALL_SOCKET);
+    
+    /* Task and event context */
+    init_event(&socket_data->event, curr, SYSCALL_SOCKET);
+
+    /* Lookup in args map */
+    
+    u32 host_pid = (bpf_get_current_pid_tgid() >> 32);
+    args_t *ctx_args  = bpf_map_lookup_elem(&pid_args_map, &host_pid);
+
+    /* Arguments */
+    if(ctx_args != NULL && socket_data != NULL)
+    {
+        socket_data->domain = (int)ctx_args->args[0];
+        socket_data->type = (int)ctx_args->args[1];
+        socket_data->protocol = (int)ctx_args->args[2];
+        socket_data->retval = ctx->ret;
+    }
+    
+    /* Delete from args map */
+    bpf_map_delete_elem(&pid_args_map, &host_pid);
+
+    /* Submit to event queue */
+    bpf_ringbuf_submit(event_data, 0);
+    return 0;
+}
+
+SEC("tp/syscalls/sys_exit_sendto")
+int handle_send_exit(struct trace_event_raw_sys_exit *ctx)
+{
+    /* 
+    ctx->args[0] : int sockfd
+    ctx->args[1] : void* buff
+    ctx->args[2] : size_t len
+    ctx->args[3] : unsigned int flags
+    */
+    FILTER_SELF
+    if(filter_container == 1) FILTER_CONTAINER
+    if(!((syscall_flags >> SEND_FLAG) & 1)) return 0;
+
+    void *event_data;
+    struct send_data_t *send_data;
+    struct task_struct *curr = (struct task_struct *)bpf_get_current_task();
+
+    /* Reserve space in event queue */
+    event_data = reserve_in_event_queue(&rb, sizeof(struct send_data_t), 0);
+    if(!event_data)
+        return 0;
+    /* Tag the entry with the syscall_id */
+    send_data = (struct send_data_t *)init_event_header(event_data, SYSCALL_SENDTO);
+    
+    /* Task and event context */
+    init_event(&send_data->event, curr, SYSCALL_SENDTO);
+
+    /* Lookup in args map */
+    
+    u32 host_pid = (bpf_get_current_pid_tgid() >> 32);
+    args_t *ctx_args  = bpf_map_lookup_elem(&pid_args_map, &host_pid);
+
+    /* Arguments */
+    if(ctx_args != NULL && send_data != NULL)
+    {
+        send_data->sockfd = (int)ctx_args->args[0];
+        send_data->buff = (void*)ctx_args->args[1];
+        send_data->len = (size_t)ctx_args->args[2];
+        send_data->flags = (unsigned int)ctx_args->args[2];
+        send_data->retval = ctx->ret;
+    }
+    
+    /* Delete from args map */
+    bpf_map_delete_elem(&pid_args_map, &host_pid);
+
+    /* Submit to event queue */
+    bpf_ringbuf_submit(event_data, 0);
+    return 0;
+}
+
+SEC("tp/syscalls/sys_exit_recvfrom")
+int handle_recv_exit(struct trace_event_raw_sys_exit *ctx)
+{
+    /* 
+    ctx->args[0] : int sockfd
+    ctx->args[1] : void* buff
+    ctx->args[2] : size_t len
+    ctx->args[3] : unsigned int flags
+    */
+    FILTER_SELF
+    if(filter_container == 1) FILTER_CONTAINER
+    if(!((syscall_flags >> RECV_FLAG) & 1)) return 0;
+
+    void *event_data;
+    struct recv_data_t *recv_data;
+    struct task_struct *curr = (struct task_struct *)bpf_get_current_task();
+
+    /* Reserve space in event queue */
+    event_data = reserve_in_event_queue(&rb, sizeof(struct recv_data_t), 0);
+    if(!event_data)
+        return 0;
+    /* Tag the entry with the syscall_id */
+    recv_data = (struct recv_data_t *)init_event_header(event_data, SYSCALL_RECVFROM);
+    
+    /* Task and event context */
+    init_event(&recv_data->event, curr, SYSCALL_RECVFROM);
+
+    /* Lookup in args map */
+    
+    u32 host_pid = (bpf_get_current_pid_tgid() >> 32);
+    args_t *ctx_args  = bpf_map_lookup_elem(&pid_args_map, &host_pid);
+
+    /* Arguments */
+    if(ctx_args != NULL && recv_data != NULL)
+    {
+        recv_data->sockfd = (int)ctx_args->args[0];
+        recv_data->buff = (void*)ctx_args->args[1];
+        recv_data->len = (size_t)ctx_args->args[2];
+        recv_data->flags = (unsigned int)ctx_args->args[2];
+        recv_data->retval = ctx->ret;
+    }
+    
+    /* Delete from args map */
+    bpf_map_delete_elem(&pid_args_map, &host_pid);
+
+    /* Submit to event queue */
+    bpf_ringbuf_submit(event_data, 0);
+    return 0;
+}
+
+
 SEC("tp/syscalls/sys_exit_connect")
 int handle_connect_exit(struct trace_event_raw_sys_exit *ctx)
 {
@@ -469,6 +619,9 @@ int handle_connect_exit(struct trace_event_raw_sys_exit *ctx)
         connect_data->uservaddr = (void *)ctx_args->args[1];
         connect_data->addrlen = (int)ctx_args->args[2];
         connect_data->retval = ctx->ret;
+        struct sockaddr_in* saddr_ptr =  (struct sockaddr_in *)ctx_args->args[1];
+        connect_data->s_addr = BPF_CORE_READ_USER(saddr_ptr,sin_addr.s_addr);
+        connect_data->sin_port = BPF_CORE_READ_USER(saddr_ptr,sin_port);
     }
     
     /* Delete from args map */
@@ -516,6 +669,9 @@ int handle_accept_exit(struct trace_event_raw_sys_exit *ctx)
         accept_data->upeer_sockaddr = (void *)ctx_args->args[1];
         accept_data->upeer_addrlen = (int *)ctx_args->args[2];
         accept_data->retval = ctx->ret;
+        struct sockaddr_in* saddr_ptr =  (struct sockaddr_in *)ctx_args->args[1];
+        accept_data->s_addr = BPF_CORE_READ_USER(saddr_ptr,sin_addr.s_addr);
+        accept_data->sin_port = BPF_CORE_READ_USER(saddr_ptr,sin_port);
     }
     
     /* Delete from args map */
@@ -601,6 +757,9 @@ int handle_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 		case SYSCALL_OPENAT:
 		case SYSCALL_UNLINKAT:
 		case SYSCALL_ACCEPT4:
+        case SYSCALL_SOCKET:
+        case SYSCALL_SENDTO:
+        case SYSCALL_RECVFROM:
 		case SYSCALL_DUP3:
             /* Copy system call arguments to program stack */
             ctx_args.args[0] = PT_REGS_PARM1_CORE(regs);
@@ -1080,6 +1239,9 @@ int handle_accept4_exit(struct trace_event_raw_sys_exit *ctx)
         accept4_data->upeer_addrlen = (int *)ctx_args->args[2];
         accept4_data->flags = (int)ctx_args->args[3];
         accept4_data->retval = ctx->ret;
+        struct sockaddr_in* saddr_ptr =  (struct sockaddr_in *)ctx_args->args[1];
+        accept4_data->s_addr = BPF_CORE_READ_USER(saddr_ptr,sin_addr.s_addr);
+        accept4_data->sin_port = BPF_CORE_READ_USER(saddr_ptr,sin_port);
     }
     
     /* Delete from args map */

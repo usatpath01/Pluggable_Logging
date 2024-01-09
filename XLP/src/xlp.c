@@ -16,6 +16,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <netdb.h>
 
 #define QUOTE(...) #__VA_ARGS__
@@ -54,7 +55,10 @@ const char *system_calls[] = {
 	"exit_group",
 	"unlinkat",
 	"open",
-	"close"};
+	"close",
+	"send",
+	"recv",
+	"socket"};
 
 const int num_system_calls = sizeof(system_calls) / sizeof(system_calls[0]);
 
@@ -500,6 +504,8 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		time(&t);
 		struct tm *tmd = localtime(&t);
 		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
+		struct in_addr s_addr_in;
+		s_addr_in.s_addr = d->s_addr;
 
 		sprintf(log_buffer,
 				QUOTE(
@@ -529,12 +535,14 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 							"addrlen" : % d
 						},
 						"artifacts" : {
-							"exe" : "%s"
+							"exe" : "%s",
+							"IP" : "%s",
+							"port" : "%d"
 						}
 					}),
 				d->event.ts, ts, d->event.syscall_id, d->retval, d->event.task.host_pid, d->event.task.host_tid,
 				d->event.task.host_ppid, d->event.task.pid, d->event.task.tid, d->event.task.ppid, d->event.task.cgroup_id,
-				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->fd, d->uservaddr, d->addrlen, d->event.task.exe_path);
+				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->fd, d->uservaddr, d->addrlen, d->event.task.exe_path, inet_ntoa(s_addr_in), d->sin_port);
 		break;
 	}
 	case SYSCALL_ACCEPT:
@@ -542,10 +550,12 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		const struct accept_data_t *d = data;
 		char ts[32];
 		time_t t;
-
+		
 		time(&t);
 		struct tm *tmd = localtime(&t);
 		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
+		struct in_addr s_addr_in;
+		s_addr_in.s_addr = d->s_addr;
 
 		sprintf(log_buffer,
 				QUOTE(
@@ -575,12 +585,154 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 							"upeer_addrlen" : "0x%08x"
 						},
 						"artifacts" : {
+							"exe" : "%s",
+							"IP" : "%s",
+							"port" : "%d"
+						}
+					}),
+				d->event.ts, ts, d->event.syscall_id, d->retval, d->event.task.host_pid, d->event.task.host_tid,
+				d->event.task.host_ppid, d->event.task.pid, d->event.task.tid, d->event.task.ppid, d->event.task.cgroup_id,
+				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->fd, d->upeer_sockaddr, d->upeer_addrlen, d->event.task.exe_path,inet_ntoa(s_addr_in), d->sin_port);
+		break;
+	}
+	case SYSCALL_SOCKET:
+	{
+		const struct socket_data_t *d = data;
+		char ts[32];
+		time_t t;
+
+		time(&t);
+		struct tm *tmd = localtime(&t);
+		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
+
+		sprintf(log_buffer,
+				QUOTE(
+					{
+						"event_context" : {
+							"ts" : % llu,
+							"datetime" : "%s",
+							"syscall_id" : % d,
+							"syscall_name" : "socket",
+							"retval" : % d,
+							"task_context" : {
+								"host_pid" : % d,
+								"host_tid" : % d,
+								"host_ppid" : % d,
+								"pid" : % d,
+								"tid" : % d,
+								"ppid" : % d,
+								"cgroup_id" : % llu,
+								"mntns_id" : % u,
+								"pidns_id" : % u,
+								"task_command" : "%s"
+							}
+						},
+						"arguments" : {
+							"domain" : % d,
+							"type" :  % d,
+							"protocol" : %d
+						},
+						"artifacts" : {
 							"exe" : "%s"
 						}
 					}),
 				d->event.ts, ts, d->event.syscall_id, d->retval, d->event.task.host_pid, d->event.task.host_tid,
 				d->event.task.host_ppid, d->event.task.pid, d->event.task.tid, d->event.task.ppid, d->event.task.cgroup_id,
-				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->fd, d->upeer_sockaddr, d->upeer_addrlen, d->event.task.exe_path);
+				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->domain, d->type, d->protocol, d->event.task.exe_path);
+		break;
+	}
+	case SYSCALL_SENDTO:
+	{
+		const struct send_data_t *d = data;
+		char ts[32];
+		time_t t;
+
+		time(&t);
+		struct tm *tmd = localtime(&t);
+		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
+
+		sprintf(log_buffer,
+				QUOTE(
+					{
+						"event_context" : {
+							"ts" : % llu,
+							"datetime" : "%s",
+							"syscall_id" : % d,
+							"syscall_name" : "send",
+							"retval" : % d,
+							"task_context" : {
+								"host_pid" : % d,
+								"host_tid" : % d,
+								"host_ppid" : % d,
+								"pid" : % d,
+								"tid" : % d,
+								"ppid" : % d,
+								"cgroup_id" : % llu,
+								"mntns_id" : % u,
+								"pidns_id" : % u,
+								"task_command" : "%s"
+							}
+						},
+						"arguments" : {
+							"sockfd" : % d,
+							"buff" :  "0x%08x" , 
+							"len" : % u, 
+							"flags" : % u
+						},
+						"artifacts" : {
+							"exe" : "%s"
+						}
+					}),
+				d->event.ts, ts, d->event.syscall_id, d->retval, d->event.task.host_pid, d->event.task.host_tid,
+				d->event.task.host_ppid, d->event.task.pid, d->event.task.tid, d->event.task.ppid, d->event.task.cgroup_id,
+				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->sockfd, d->buff, d->len, d->flags, d->event.task.exe_path);
+		break;
+	}
+	case SYSCALL_RECVFROM:
+	{
+		const struct recv_data_t *d = data;
+		char ts[32];
+		time_t t;
+
+		time(&t);
+		struct tm *tmd = localtime(&t);
+		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
+
+		sprintf(log_buffer,
+				QUOTE(
+					{
+						"event_context" : {
+							"ts" : % llu,
+							"datetime" : "%s",
+							"syscall_id" : % d,
+							"syscall_name" : "recv",
+							"retval" : % d,
+							"task_context" : {
+								"host_pid" : % d,
+								"host_tid" : % d,
+								"host_ppid" : % d,
+								"pid" : % d,
+								"tid" : % d,
+								"ppid" : % d,
+								"cgroup_id" : % llu,
+								"mntns_id" : % u,
+								"pidns_id" : % u,
+								"task_command" : "%s"
+							}
+						},
+						"arguments" : {
+							"sockfd" : % d,
+							"buff" :  "0x%08x" , 
+							"len" : % u, 
+							"flags" : % u
+						},
+						"artifacts" : {
+							"exe" : "%s"
+						}
+					}),
+				d->event.ts, ts, d->event.syscall_id, d->retval, d->event.task.host_pid, d->event.task.host_tid,
+				d->event.task.host_ppid, d->event.task.pid, d->event.task.tid, d->event.task.ppid, d->event.task.cgroup_id,
+				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->sockfd, d->buff, d->len, d->flags, d->event.task.exe_path);
 		break;
 	}
 	case SYSCALL_BIND:
@@ -992,6 +1144,8 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		time(&t);
 		struct tm *tmd = localtime(&t);
 		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
+		struct in_addr s_addr_in;
+		s_addr_in.s_addr = d->s_addr;
 
 		sprintf(log_buffer,
 				QUOTE(
@@ -1022,12 +1176,14 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 							"flags" : % d
 						},
 						"artifacts" : {
-							"exe" : "%s"
+							"exe" : "%s",
+							"IP" : "%s",
+							"port" : "%d"
 						}
 					}),
 				d->event.ts, ts, d->event.syscall_id, d->retval, d->event.task.host_pid, d->event.task.host_tid,
 				d->event.task.host_ppid, d->event.task.pid, d->event.task.tid, d->event.task.ppid, d->event.task.cgroup_id,
-				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->fd, d->upeer_sockaddr, d->upeer_addrlen, d->flags, d->event.task.exe_path);
+				d->event.task.mntns_id, d->event.task.pidns_id, d->event.task.comm, d->fd, d->upeer_sockaddr, d->upeer_addrlen, d->flags, d->event.task.exe_path,inet_ntoa(s_addr_in), d->sin_port);
 		break;
 	}
 	case SYSCALL_DUP3:
