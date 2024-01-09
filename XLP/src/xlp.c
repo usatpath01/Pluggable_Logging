@@ -504,7 +504,7 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		time(&t);
 		struct tm *tmd = localtime(&t);
 		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
-		struct in_addr s_addr_in;
+struct in_addr s_addr_in;
 		s_addr_in.s_addr = d->s_addr;
 
 		sprintf(log_buffer,
@@ -550,11 +550,11 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		const struct accept_data_t *d = data;
 		char ts[32];
 		time_t t;
-		
+
 		time(&t);
 		struct tm *tmd = localtime(&t);
 		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
-		struct in_addr s_addr_in;
+struct in_addr s_addr_in;
 		s_addr_in.s_addr = d->s_addr;
 
 		sprintf(log_buffer,
@@ -584,7 +584,7 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 							"upeer_sockaddr" : "0x%08x",
 							"upeer_addrlen" : "0x%08x"
 						},
-						"artifacts" : {
+"artifacts" : {
 							"exe" : "%s",
 							"IP" : "%s",
 							"port" : "%d"
@@ -1144,7 +1144,7 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		time(&t);
 		struct tm *tmd = localtime(&t);
 		strftime(ts, sizeof(ts), "%H:%M:%S", tmd);
-		struct in_addr s_addr_in;
+struct in_addr s_addr_in;
 		s_addr_in.s_addr = d->s_addr;
 
 		sprintf(log_buffer,
@@ -1281,9 +1281,13 @@ int main(int argc, char **argv)
 	// fprintf(stderr, "Trying to send request!\n");
 	// send_request();
 
+	/* DNS Resolution Logic */
 	/* Setup socket for sending logs */
+	/*
 	const char *serverHostname = "xlp_server"; // Hostname of the server
+
 	fprintf(stderr, "Creating socket \n");
+
 	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if (clientSocket == -1)
 	{
@@ -1304,6 +1308,41 @@ int main(int argc, char **argv)
 		close(clientSocket);
 		return 1;
 	}
+	*/
+
+	/* Server IP and Port Hard Coded */
+	const char *serverIP = "10.5.20.184";
+	const int serverPort = 8086;
+
+	fprintf(stderr, "Creating socket \n");
+
+	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if (clientSocket == -1)
+	{
+		perror("Error: Could not create socket");
+		return 1;
+	}
+
+	struct sockaddr_in serverAddr;
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_port = htons(serverPort);
+
+	// Use inet_pton to convert the IP address from string to binary format
+	if (inet_pton(AF_INET, serverIP, &serverAddr.sin_addr) <= 0)
+	{
+		perror("Error: Invalid IP address");
+		close(clientSocket);
+		return 1;
+	}
+
+	fprintf(stderr, "Connecting to server \n");
+	if (connect(clientSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1)
+	{
+		perror("Error: Could not connect to the server");
+		close(clientSocket);
+		return 1;
+	}
+
 
 	/* Parse command line arguments */
 	err = argp_parse(&argp, argc, argv, 0, NULL, &arguments);
