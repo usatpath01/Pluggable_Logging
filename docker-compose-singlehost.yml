@@ -9,10 +9,10 @@ services:
     volumes:
       - /boot/config-5.15.0-84-generic:/boot/config-5.15.0-84-generic:ro
       - /sys/kernel/debug/:/sys/kernel/debug/
-    #depends_on:
-    #  - collector_server
-    #networks:
-    #  - mynetwork
+    depends_on:
+      - collector_server
+    networks:
+      - mynetwork
 
   xlp_dummy:
     build: XLP/
@@ -23,10 +23,10 @@ services:
     volumes:
       - /boot/config-5.15.0-84-generic:/boot/config-5.15.0-84-generic:ro
       - /sys/kernel/debug/:/sys/kernel/debug/
-    #depends_on:
-    #  - collector_server
-    #networks:
-    #  - mynetwork
+    depends_on:
+      - collector_server
+    networks:
+      - mynetwork
 
   collector_server:
     build:
@@ -36,8 +36,8 @@ services:
     ports:
       - "8086:8086"
     restart: always
-    #networks:
-    #  - mynetwork
+    networks:
+      - mynetwork
     
-#networks:
-#  mynetwork:   # Define the custom network
+networks:
+  mynetwork:   # Define the custom network
