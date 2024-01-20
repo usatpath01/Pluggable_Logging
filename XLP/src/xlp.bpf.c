@@ -1,4 +1,5 @@
 #include "vmlinux.h"
+//#include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
@@ -199,6 +200,7 @@ int handle_write_exit(struct trace_event_raw_sys_exit *ctx)
         bpf_probe_read_str(write_data->filepath, sizeof(write_data->filepath), filepath);
     }
 
+    //bpf_trace_printk("Printing the syscall", write_data->retval);
     /* Submit to event queue */
     bpf_ringbuf_submit(event_data, 0);
 
@@ -627,6 +629,10 @@ int handle_connect_exit(struct trace_event_raw_sys_exit *ctx)
     /* Delete from args map */
     bpf_map_delete_elem(&pid_args_map, &host_pid);
 
+   //bpf_trace_printk("Printing the syscall");
+    //bpf_trace_printk("Printing the syscall");
+    //printf("Printing syscall -  ");
+    //bpf_trace_printk("Printing the syscall", connect_data->sin_port);
     /* Submit to event queue */
     bpf_ringbuf_submit(event_data, 0);
     return 0;
