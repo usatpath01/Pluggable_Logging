@@ -225,6 +225,9 @@ struct bind_data_t {
     int fd;                                     /* Socket file descriptor */
     void *umyaddr;                              /* My address info */
     int addrlen;                                /* My address length */
+    // Data
+    unsigned long s_addr;
+    unsigned short sin_port;
 
     long retval;                                /* Return value */
 };

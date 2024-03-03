@@ -718,6 +718,10 @@ int handle_bind_exit(struct trace_event_raw_sys_exit *ctx)
         bind_data->fd = (int)ctx_args->args[0];
         bind_data->umyaddr = (void *)ctx_args->args[1];
         bind_data->addrlen = (int)ctx_args->args[2];
+        bind_data->retval = ctx->ret;
+        struct sockaddr_in* saddr_ptr =  (struct sockaddr_in *)ctx_args->args[1];
+        bind_data->s_addr = BPF_CORE_READ_USER(saddr_ptr,sin_addr.s_addr);
+        bind_data->sin_port = BPF_CORE_READ_USER(saddr_ptr,sin_port);
     }
     
     /* Delete from args map */
