@@ -37,8 +37,9 @@ The `Dockerfile` builds the userspace frontend object file and uses the BPF bina
 ### Cloning the repo
 1. Run the following command on your shell to clone this repository:
 ```
-git clone https://anonymous.4open.science/r/XLP-11AE
+git clone https://github.com/usatpath01/Pluggable_Logging.git
 ```
+Go to XLP Folder
 2. Run the following command to clone the submodules of the  `libbpf-bootstrap` repo.
 ```
 git clone --recurse-submodules https://github.com/libbpf/libbpf-bootstrap
