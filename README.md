@@ -32,10 +32,4 @@ docker compose up xlp -d
 ```
 git clone https://github.com/usatpath01/DeathStarBench_XLP.git
 sudo docker stack deploy --compose-file=docker-compose-swarm.yml dsb
-
-
-
-    
-    
- 
-
+```
