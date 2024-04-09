@@ -17,10 +17,14 @@ const int serverPort = XXXX;
 `sudo docker-compose build`
 2. Run the XLP_COLLECTOR in a Host:
 ```
+git clone https://github.com/usatpath01/Pluggable_Logging.git
+sudo docker-compose build
 docker compose up collector_server -d
 ```
 3. Once the collector server is up, run the XLP_GENERATOR in each other hosts where the microservice application containers run.
 ```
+git clone https://github.com/usatpath01/Pluggable_Logging.git
+sudo docker-compose build
 docker compose up xlp -d
 ```
     
