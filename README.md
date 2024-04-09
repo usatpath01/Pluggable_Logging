@@ -5,7 +5,7 @@ The XLP_Distributed as 2 components: `XLP_COLLECTOR` and `XLP_GENERATOR`
 Pluggable_Logging
 ├── XLP
 └── XLP_Distributed
-
+```
 ## Configurations:
 Configure the `serverIP` and `serverPort` in Pluggable_Logging/XLP/src/xlp.c
 ```
