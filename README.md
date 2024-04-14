@@ -16,8 +16,21 @@ const int serverPort = XXXX;
 1. To Build the image: 
 `sudo docker-compose build`
 2. Run the XLP_COLLECTOR in a Host:
+Clone the repo
 ```
 git clone https://github.com/usatpath01/Pluggable_Logging.git
+```
+In `docker-compose.yml` for the collector,  there will be a volume mapping, change it to the directory where you want the logs to come 
+``` volumes:
+      - /home/utkalika-ibm/XLP_Distributed/collector_logs:/app/logs
+```
+will be changed to 
+```
+volumes:
+      - <your logs directory>:/app/logs
+```
+Then build it 
+```
 sudo docker-compose build
 docker compose up collector_server -d
 ```
