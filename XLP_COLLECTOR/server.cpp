@@ -7,6 +7,7 @@
 #include <sys/time.h> 
 #include <vector>
 #include <ctime>
+#include <fstream>
 #include <chrono>
 
 
@@ -16,13 +17,13 @@ int main() {
     std::vector<int>clientSockets; 
     std::vector<std::string>clientReads;
 
-     // Get the current time point
-    //auto currentTimePoint = std::chrono::system_clock::now();
-    // Convert the time point to a time_t
-    //std::time_t currentTime = std::chrono::system_clock::to_time_t(currentTimePoint);
-    // Convert the time_t to a string representation
-    //char timeStr[100];
-    //std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", std::localtime(&currentTime));
+    // File Creation
+    auto currentTimePoint = std::chrono::system_clock::now();
+    std::time_t currentTime = std::chrono::system_clock::to_time_t(currentTimePoint);
+    char timeStr[100];
+    std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d_%H-%M-%S", std::localtime(&currentTime));
+    std::string filename = "logs/" + std::string(timeStr) + ".txt";
+    std::ofstream outputFile(filename, std::ofstream::out);
 
     // Create a socket
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -66,14 +67,14 @@ int main() {
             max_fd = std::max(max_fd,clientSocket);
         }
 
-        std::cout << "Server is calling select " << max_fd << " " << std::endl;
+        // std::cout << "Server is calling select " << max_fd << " " << std::endl;
 
         int chosen_fd =  select( max_fd + 1 , &readfds , NULL , NULL , NULL);   
         if(chosen_fd <0 && (errno != EINTR))
         {
             std::cerr << "Error: select call failure " << std::endl;
         }
-        std::cout << "Server is checking main socket" << std::endl;
+        //std::cout << "Server is checking main socket" << std::endl;
         if (FD_ISSET(serverSocket, &readfds))   
         {
             std::cout << "Server is getting new accept connection " << std::endl;
@@ -93,27 +94,26 @@ int main() {
         for(int cl = 0; cl < clientSockets.size(); cl++)
         {
           int clientSocket = clientSockets[cl];
-          std::cout << "client Socket = " << clientSocket << std::endl;
+          //std::cout << "client Socket = " << clientSocket << std::endl;
           if(FD_ISSET(clientSocket, &readfds))
           {
             memset(buffer,0,sizeof(buffer));
             std::string& curr_log = clientReads[cl];
             ssize_t bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
             //std::cout << "Current timestamp: " << timeStr << std::endl;
-            std::cout << "Byte Recived = " << bytesReceived << std::endl;
+            //std::cout << "Byte Recived = " << bytesReceived << std::endl;
             if (bytesReceived <= 0) {
                 // std::cerr << "Error: Could not receive data from the client" << std::endl;
             } else {
-                for(int i =0; i<bytesReceived; i++)
+                auto currentTime = std::chrono::system_clock::now();
+                auto durationSinceEpoch = currentTime.time_since_epoch();
+                auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(durationSinceEpoch);
+                std::cout << "Epoch Time in milliseconds: " << milliseconds.count() << " milliseconds" << std::endl;
+                for(int i=0; i<bytesReceived; i++)
                 {
-                    
                     if(buffer[i]=='\n')
                     {
-                        auto currentTime = std::chrono::system_clock::now();
-                        auto durationSinceEpoch = currentTime.time_since_epoch();
-                        auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(durationSinceEpoch);
-                        std::cout << "Epoch Time in milliseconds: " << milliseconds.count() << " milliseconds" << std::endl;
-                        std::cout <<"Host "<<cl<<" : "<< curr_log << std::endl;
+                        outputFile <<"Host "<<cl<<" : "<< curr_log << std::endl;
                         curr_log = "";
                     }
                     else 
