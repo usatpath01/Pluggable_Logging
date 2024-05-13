@@ -9,8 +9,16 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 
-#define FILTER_SELF if(mypid == (bpf_get_current_pid_tgid() >> 32)) {return 0;}
-#define FILTER_CONTAINER if((bpf_get_current_pid_tgid() >> 32) == get_task_ns_tgid((struct task_struct *)bpf_get_current_task())) {return 0;}
+#define FILTER_SELF                                  \
+    if (mypid == (bpf_get_current_pid_tgid() >> 32)) \
+    {                                                \
+        return 0;                                    \
+    }
+#define FILTER_CONTAINER                                                                                      \
+    if ((bpf_get_current_pid_tgid() >> 32) == get_task_ns_tgid((struct task_struct *)bpf_get_current_task())) \
+    {                                                                                                         \
+        return 0;                                                                                             \
+    }
 
 typedef struct
 {
@@ -22,21 +30,24 @@ typedef struct
     char exe_name[MAX_FILEPATH_SIZE];
 } copy_str;
 
-struct {
-	__uint(type, BPF_MAP_TYPE_RINGBUF);
-	__uint(max_entries, 256 * 1024);
+struct
+{
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 256 * 1024);
 } rb SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, u32);
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, u32);
     __type(value, copy_str);
     __uint(max_entries, 10240);
 } pid_exec_map SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, u32);
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, u32);
     __type(value, args_t);
     __uint(max_entries, 1024);
 } pid_args_map SEC(".maps");

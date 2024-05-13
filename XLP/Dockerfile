@@ -6,7 +6,7 @@ RUN apt-get update && \
     libelf-dev libc6-dev-i386 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir /XLP
+RUN mkdir /disprotrack
 WORKDIR /disprotrack
 
 ADD bin/ bin/
