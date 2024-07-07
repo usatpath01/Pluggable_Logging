@@ -16,6 +16,22 @@ Go to XLP Folder
 ```
 git clone --recurse-submodules https://github.com/libbpf/libbpf-bootstrap
 ```
+### Build Requirements
+If you wish to build the binaries from scratch, your system must satisfy the following requirements:
+### Libraries/Applications
+- `libbelf`
+- `zlib`
+- `clang`
+- `docker`
+
+#### Ubuntu
+```
+sudo apt install libelf-dev
+sudo apt-get install libpcap-dev
+sudo apt install clang
+sudo apt install binutils-dev
+sudo apt install llvm
+```
 
 ### Building the BPF Binary
 1. Run the following command to build the `libbpf` library, `bpftool`, and the BPF binary.
