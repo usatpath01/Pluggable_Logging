@@ -7,6 +7,26 @@ Pluggable_Logging
 └── XLP_COLLECTOR
 ```
 ## Configurations:
+1. Run the following command on your shell to clone this repository:
+```
+git clone https://github.com/usatpath01/Pluggable_Logging.git
+```
+Go to XLP Folder
+2. Run the following command to clone the submodules of the `libbpf-bootstrap` repo.
+```
+git clone --recurse-submodules https://github.com/libbpf/libbpf-bootstrap
+```
+
+### Building the BPF Binary
+1. Run the following command to build the `libbpf` library, `bpftool`, and the BPF binary.
+```
+cd XLP/libbpf-bootstrap/libbpf/src
+make
+cd XLP/libbpf-bootstrap/bpftool/src
+make
+```
+
+### Configure Collector Server IP
 Configure the `serverIP` and `serverPort` in Pluggable_Logging/XLP/src/xlp.c
 ```
 const char *serverIP = "10.5.20.X";
