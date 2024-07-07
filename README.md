@@ -29,7 +29,7 @@ make
 ### Configure Collector Server IP
 Configure the `serverIP` and `serverPort` in Pluggable_Logging/XLP/src/xlp.c
 ```
-const char *serverIP = "10.5.20.X";
+const char *serverIP = "XXX.XX.XX.X";
 const int serverPort = XXXX;
 ```
 
