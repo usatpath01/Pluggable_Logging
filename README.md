@@ -6,6 +6,10 @@ Pluggable_Logging
 ├── XLP
 └── XLP_COLLECTOR
 ```
+## System Configuration:
+Ubuntu 22.04
+Linux master-node 6.5.0-41-generic
+
 ## Configurations:
 1. Run the following command on your shell to clone this repository:
 ```
