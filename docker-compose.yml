@@ -14,20 +14,6 @@ services:
     networks:
       - mynetwork
 
-  # xlp_dummy:
-  #   build: XLP/
-  #   container_name: XLP_GENERATOR_DUMMY
-  #   privileged: true
-  #   pid: host
-  #   #cgroupns: host
-  #   volumes:
-  #     - /boot/config-5.15.0-84-generic:/boot/config-5.15.0-84-generic:ro
-  #     - /sys/kernel/debug/:/sys/kernel/debug/
-  #   depends_on:
-  #     - collector_server
-  #   networks:
-  #     - mynetwork
-
   collector_server:
     build:
       context: XLP_COLLECTOR/
@@ -39,7 +25,7 @@ services:
     networks:
       - mynetwork
     volumes:
-      - /home/utkalika-ibm/XLP_Distributed/collector_logs:/app/logs
+      - ./Collector_logs:/app/logs
     
 networks:
   mynetwork:   # Define the custom network
