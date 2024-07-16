@@ -1455,7 +1455,7 @@ int main(int argc, char **argv)
 	
 
 	// /* Server IP and Port Hard Coded */
-	const char *serverIP = "10.5.20.145";
+	const char *serverIP = "10.5.30.236";
 	const int serverPort = 8086;
 
 	fprintf(stderr, "Creating socket \n");
