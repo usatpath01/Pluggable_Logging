@@ -14,7 +14,7 @@ Pluggable_Logging
 - Ubuntu 22.04
 - Linux 6.5.0-41-generic
 - x86-64
-- Number of vCPU cores = 16and 
+- Number of vCPU cores = 16
 - RAM = 64 GB
 - HDD Size = 500GB (Manager), 250GB (Workers)
 
