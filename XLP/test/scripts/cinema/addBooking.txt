@@ -1,1 +1,0 @@
-{"userid":"abc","showtimeid":"def","movies":["xyz"]}

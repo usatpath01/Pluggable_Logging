@@ -1,4 +1,7 @@
 collector_logs
 Collector_logs
-XLP/bin/
-XLP/src/xlp
+Tracee_Logs/
+XPLOG_Agent/bin/
+XPLOG_Agent/src/xlp
+XPLOG_Agent/logs/
+.vscode

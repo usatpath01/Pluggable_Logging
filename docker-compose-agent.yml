@@ -1,0 +1,9 @@
+version: '3'
+services:
+  xplog_agent:
+    build: XPLOG_Agent/
+    container_name: XPLOG_Agent
+    privileged: true
+    pid: host
+    volumes:
+      - /sys/kernel/debug/:/sys/kernel/debug/
