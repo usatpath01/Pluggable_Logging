@@ -1,5 +1,5 @@
-collector_logs
-Collector_logs
+collector_logs/
+Collector_logs/
 Tracee_Logs/
 XPLOG_Agent/bin/
 XPLOG_Agent/test/
