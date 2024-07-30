@@ -104,3 +104,28 @@ docker compose -f docker-compose-agent.yml up
 git clone https://github.com/usatpath01/DeathStarBench_XLP.git
 sudo docker stack deploy --compose-file=docker-compose-swarm.yml dsb
 ```
+
+### Running the performace evaluation scripts
+1. Start the XLP container for logging.
+2. Start the Cinema-Go-Microservices application from the `test/cinema` directory, by running `docker compose up`
+3. Run the script `test/scripts/cinema/run.sh` for making requests to the application.
+4. The execution times are stored in the `test/cinema/benchmarking` directory. Run the script `test/scripts/cinema/calc.py` to generate the resulting data.
+5. The steps can be performed with Tracee as the logging architecture, and the results can be compared.
+
+## Configurations
+- `-s <syscall_1>,<syscall_2>,... or --system_call=<syscall_1>,<syscall_2>,...` : Provide the system calls to be traced as a comma separated list. By default, XLP traces all its supported system calls.
+- `-c or --filter_container` : Only print logs from processes running inside containers.
+> Note: All our testing and results were obtained with the `-c` flag, with tracing enabled for all system calls.
+- Make sure that the application logs printed by your microservice/functions are written to `stdout` or `stderr` or a file in `/var/log/app/`.
+
+## Files and Directories
+- `bin/`: Contains all the necessary library binaries, BPF object file and the userspace frontend object file compiled by the Makefile from libbpf-bootstrap.
+- `bin/xlp.skel.h`: Skeleton eBPF header file generated from `xlp.skel.h`. Describes the structure of the ELF binary of the eBPF program. Declares wrapper functions for the `xlp` app over the libbpf functions for loading, attaching, etc. of the eBPF program
+- `logs/` : Contains the logs from our evaluation on both a simple Go container and full-fledged Cinema-Go-Microservices application.
+- `test/cinema` : Contains the source code for the Cinema-Go-Micorservices application that was used for benchmarking.
+- `test/simple-go` : Contains the source code for the simple Go containerized application that was used for correctness and log-richness evaluation.
+- `test/scripts/cinema` : Contains the scripts that were used for testing and generating the results.
+- `data` : Contains performance evaluation results in TSV files, were used for generating the plots with `gnuplot`.
+- `xlp.bpf.c`: The eBPF program logic, written in C using libbpf C CO-RE
+- `xlp.c`: The frontend of the eBPF program. Contains the code for opening, loading, attaching of the eBPF program to the right hooks. Also contains the logic for handling of the various syscall log + application log events. Writes to the log file.
+- `xlp.h`, `util.h`, `syscall.h`, `filesystem.h` and `buffer.h`: Useful user-defined structs and helper functions.
