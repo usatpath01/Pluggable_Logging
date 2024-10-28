@@ -41,6 +41,13 @@ struct {
     __uint(max_entries, 1024);
 } pid_args_map SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, u32);
+    __type(value, bool);
+    __uint(max_entries, 512);
+} syscall_required_map SEC(".maps");
+
 static void *reserve_in_event_queue(void *ringbuf, u64 payload_size, u64 flags)
 {
     void *data = bpf_ringbuf_reserve(ringbuf, payload_size + sizeof(u32), flags);
@@ -155,6 +162,15 @@ static void *init_event_header(void *data, u32 syscall_id)
     *((u32 *)data) = syscall_id;
     data = data + sizeof(u32);
     return data;
+}
+
+static __always_inline bool is_syscall_required(u32 syscall_id)
+{
+    bool *required = bpf_map_lookup_elem(&syscall_required_map, &syscall_id);
+    if (required == NULL) {
+        return true;
+    }
+    return *required;
 }
 
 #endif /* __UTIL_H */

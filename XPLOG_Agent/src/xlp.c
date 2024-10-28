@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <argp.h>
 #include <strings.h>
 #include <sys/resource.h>
@@ -18,6 +19,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define QUOTE(...) #__VA_ARGS__
 
@@ -1410,10 +1413,67 @@ void send_message(char *message)
 	return 0;
 }
 
+char buffer[2048];
+
+void update_required_syscalls(struct bpf_map *map, int totalLen)
+{
+	/*
+		Buffer contains sequence of 4 byte syscall number followed by 1 byte boolean
+	*/
+	if (totalLen % 5 != 0)
+	{
+		fprintf(stderr, "Error: Required syscalls file is corrupted\n");
+		return;
+	}
+	int num_syscalls = totalLen / 5;
+	for (int i = 0; i < num_syscalls; i++)
+	{
+		uint32_t syscall_num = *(int *)(buffer + i * 5);
+		bool syscall_flag = *(buffer + i * 5 + 4) == 1;
+		bpf_map__update_elem(map, &syscall_num, sizeof(syscall_num), &syscall_flag, sizeof(syscall_flag), 0);
+	}
+}
+
+void check_required_syscalls(struct bpf_map *map, int fd)
+{
+	int bytes_read = read(fd, buffer, sizeof(buffer));
+	if (bytes_read == -1)
+	{
+		perror("Error: Could not read from the required syscalls file");
+		return;
+	}
+	if (bytes_read == 0)
+	{
+		return;
+	}
+	int totalLen = bytes_read;
+	while (buffer[totalLen - 1] != '\n' && totalLen < sizeof(buffer))
+	{
+		int bytes_read = read(fd, buffer + totalLen, sizeof(buffer) - totalLen);
+		if (bytes_read == -1)
+		{
+			perror("Error: Could not read from the required syscalls file");
+			return;
+		}
+		if (bytes_read == 0)
+		{
+			break;
+		}
+		totalLen += bytes_read;
+	}
+	if (buffer[totalLen - 1] != '\n')
+	{
+		fprintf(stderr, "Error: Required syscalls file is too large\n");
+		return;
+	}
+	update_required_syscalls(map, totalLen-1);
+}
+
 int main(int argc, char **argv)
 {
 	struct ring_buffer *rb = NULL;
 	struct xlp_bpf *skel;
+	struct bpf_map *syscall_required_map;
 
 	struct arguments arguments = {
 		.bit_flags = 0,
@@ -1455,7 +1515,7 @@ int main(int argc, char **argv)
 	
 
 	// /* Server IP and Port Hard Coded */
-	const char *serverIP = "10.5.30.236";
+	const char *serverIP = "10.5.30.189";
 	const int serverPort = 8086;
 
 	fprintf(stderr, "Creating socket \n");
@@ -1547,6 +1607,27 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
+	/* Set up the map for the required syscalls */
+	syscall_required_map = bpf_object__find_map_by_name(skel->obj, "syscall_required_map");
+	if (!syscall_required_map)
+	{
+		err = -1;
+		fprintf(stderr, "Failed to get the required syscall map\n");
+		goto cleanup;
+	}
+
+	/* Create the fifo required syscalls file in read-only mode */
+	mkfifo("/tmp/required_syscalls", 0666);		// TODO: Setup permissions properly
+
+	/* Open the fifo file */
+	int required_syscalls_fd = open("/tmp/required_syscalls", O_RDONLY | O_NONBLOCK);
+	if (required_syscalls_fd == -1)
+	{
+		err = -1;
+		fprintf(stderr, "Failed to open the required syscalls file\n");
+		goto cleanup;
+	}
+
 	/* Process events */
 	printf("{\n\"logs\":[\n");
 	while (!exiting)
@@ -1571,6 +1652,8 @@ int main(int argc, char **argv)
 			printf("Time : %lld -- Number of events processed   %d\n", epoctime, err);
 			printf("Time : %lld -- Size of Record Consumed %d\n", epoctime, sizeof(err));
 		}
+		/* Check if updates to required syscalls are needed */
+		check_required_syscalls(syscall_required_map, required_syscalls_fd);
 	}
 	printf("]\n}");
 
