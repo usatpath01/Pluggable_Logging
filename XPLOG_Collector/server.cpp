@@ -10,6 +10,16 @@
 #include <fstream>
 #include <chrono>
 
+std::ofstream outputFile;
+
+// Vector containing the handlers for different services. Each handler is a function pointer that takes a string as an argument.
+// The string argument is the message received from the client.
+// The serviceId is used to index into this vector.
+std::vector<void(*)(int, std::string&)> serviceHandlers;
+
+void handleService0(int clientId, std::string& message) {
+    outputFile <<"Host "<<clientId<<" : "<< message << std::endl;
+}
 
 int main() {
 
@@ -17,13 +27,16 @@ int main() {
     std::vector<int>clientSockets; 
     std::vector<std::string>clientReads;
 
+    // Register the service handlers
+    serviceHandlers.push_back(handleService0);
+
     // File Creation
     auto currentTimePoint = std::chrono::system_clock::now();
     std::time_t currentTime = std::chrono::system_clock::to_time_t(currentTimePoint);
     char timeStr[100];
     std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d_%H-%M-%S", std::localtime(&currentTime));
     std::string filename = "logs/" + std::string(timeStr) + ".txt";
-    std::ofstream outputFile(filename, std::ofstream::out);
+    outputFile.open(filename);
 
     // Create a socket
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -109,16 +122,29 @@ int main() {
                 auto durationSinceEpoch = currentTime.time_since_epoch();
                 auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(durationSinceEpoch);
                 std::cout << "Epoch Time in milliseconds: " << milliseconds.count() << " milliseconds" << std::endl;
+                int serviceId = -1;
                 for(int i=0; i<bytesReceived; i++)
                 {
                     if(buffer[i]=='\n')
                     {
-                        outputFile <<"Host "<<cl<<" : "<< curr_log << std::endl;
+                        // Call the appropriate service handler
+                        if (serviceId < serviceHandlers.size()) {
+                            serviceHandlers[serviceId](cl, curr_log);
+                        }
+                        else {
+                            std::cerr << "Error: Unsupported service ID" << std::endl;
+                        }
                         curr_log = "";
+                        serviceId = -1;
                     }
                     else 
                     {
-                        curr_log+=buffer[i];
+                        if (serviceId == -1) {  // This is the first byte and is the serviceId
+                            serviceId = buffer[i];
+                        } else {
+                            // Append the message to the current log
+                            curr_log += buffer[i];
+                        }
                     }
                 }            
             }
@@ -129,48 +155,5 @@ int main() {
     close(serverSocket);
     for( int clientSocket:clientSockets)
         close(clientSocket);
-
-    // // Accept incoming connections
-    // struct sockaddr_in clientAddr;
-    // socklen_t clientAddrLen = sizeof(clientAddr);
-    // int clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
-    // if (clientSocket == -1) {
-    //     std::cerr << "Error: Could not accept incoming connection" << std::endl;
-    //     close(serverSocket);
-    //     return 1;
-    // }
-
-    // std::cout << "Accepted a connection from " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
-
-    // char buffer[4096];
-    // std::string curr_log = "";
-    // // Receive and print the message from the client
-    // while(1)
-    // {
-    //     memset(buffer,0,sizeof(buffer));
-        
-    //     ssize_t bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-    //     if (bytesReceived <= 0) {
-    //         // std::cerr << "Error: Could not receive data from the client" << std::endl;
-    //     } else {
-    //         for(int i =0; i<bytesReceived; i++)
-    //         {
-    //             curr_log+=buffer[i];
-    //             if(buffer[i]=='\n')
-    //             {
-    //                 std::cout << curr_log << std::endl;
-    //                 curr_log = "";
-    //             }
-    //         }            
-    //     }
-    // }
-    
-    // // Close the sockets
-    // close(clientSocket);
-    // close(serverSocket);
-
-
-
-
     return 0;
 }

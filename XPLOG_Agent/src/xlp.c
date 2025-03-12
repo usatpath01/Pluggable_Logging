@@ -1387,15 +1387,24 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	strcat(log_buffer, ",\n");
 	//printf("LOG = : %s\n", log_buffer);
 	// printf("LOG = : %s\n", log_buffer);
-	send_message(log_buffer);
+	send_message(log_buffer, 0);
 
 	return 0;
 }
 
-void send_message(char *message)
+// Sends the message to the server, prepending the service ID. 
+// The service ID is used to identify the service that the message is coming from.
+// The service ID for the logger is 0.
+void send_message(char *message, char serviceId)
 {
 	int totalLen = strlen(message);
 	int cursor = 0;
+	int bytes_sent = send(clientSocket, &serviceId, 1, 0);
+	if (bytes_sent == -1)
+	{
+		perror("Error: Could not send data to the server");
+		return;
+	}
 	while (cursor != totalLen)
 	{
 		int bytes_sent = send(clientSocket, message + cursor, totalLen - cursor, 0);
@@ -1409,7 +1418,7 @@ void send_message(char *message)
 			cursor += bytes_sent;
 		}
 	}
-	fprintf(stderr,"Sent message to the server: %s\n", message);
+	fprintf(stderr,"Sent message to the server: %s from serviceID: %d\n", message, serviceId);
 	return 0;
 }
 
