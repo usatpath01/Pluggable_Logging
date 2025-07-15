@@ -91,7 +91,7 @@ Before starting the containers, make sure:
 2. You have cloned the Pluggable_Logging repository.
 ```
 docker compose -f docker-compose-collector.yml build
-docker compose up docker-compose-collector.yml -d
+docker compose -f docker-compose-collector.yml up -d
 ```
 
 3. Once the collector server is up, run the XPLOG_Agent in each worker node where the microservice application containers run.
