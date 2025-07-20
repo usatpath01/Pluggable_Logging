@@ -118,3 +118,17 @@ Please refer this:
 - `xlp.bpf.c`: The eBPF program logic, written in C using libbpf C CO-RE
 - `xlp.c`: The frontend of the eBPF program. Contains the code for opening, loading, attaching of the eBPF program to the right hooks. Also contains the logic for handling of the various syscall log + application log events. Writes to the log file.
 - `xlp.h`, `util.h`, `syscall.h`, `filesystem.h` and `buffer.h`: Useful user-defined structs and helper functions.
+
+### Troubleshooting
+```
+make
+  CC       ../bin/xlp.bpf.o
+xlp.bpf.c:1:10: fatal error: vmlinux.h: No such file or directory
+    1 | #include "vmlinux.h"
+      |          ^~~~~~~~~~~
+compilation terminated.
+```
+Go to XPLOG_Agent
+```
+./build.sh
+```
